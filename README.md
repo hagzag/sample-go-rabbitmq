@@ -1,20 +1,22 @@
 # RabbitMQ consumer and sender
 
-A simple docker container that will receive messages from a RabbitMQ queue and scale via KEDA.  The receiver will receive a single message at a time (per instance), and sleep for 1 second to simulate performing work.  When adding a massive amount of queue messages, KEDA will drive the container to scale out according to the event source (RabbitMQ).
+Exmaple based on RabbitMQ consumer and sender from keda's official github repo
 
 ## Pre-requisites
 
-* Kubernetes cluster
-* [KEDA 2.0 installed](https://keda.sh/docs/deploy/) on the cluster
+* Kubernetes cluster - used CI cluster for testing (see `.env` + `Taskfile`)
+* [KEDA 2.0 installed](https://keda.sh/docs/deploy/) on the cluster - covered by `task deploy_keda`
+* [RabbitMq](https://keda.sh/docs/deploy/) on the cluster - covered by `task deploy_keda`
 
-## Setup
+
+## Setup based on https://github.com/kedacore/sample-go-rabbitmq.git
 
 This setup will go through creating a RabbitMQ queue on the cluster and deploying this consumer with the `ScaledObject` to scale via KEDA.  If you already have RabbitMQ you can use your existing queues.
 
 First you should clone the project:
 
 ```cli
-git clone https://github.com/kedacore/sample-go-rabbitmq
+git clone https://github.com/kedacore/sample-go-rabbitmq.git
 cd sample-go-rabbitmq
 ```
 
@@ -48,20 +50,6 @@ helm install rabbitmq --set auth.username=user --set auth.password=PASSWORD bitn
 
 * With RabbitMQ Helm Chart version 6.x.x or earlier, username and password should be specified with rabbitmq.username and rabbitmq.password parameters [https://hub.helm.sh/charts/bitnami/rabbitmq](https://hub.helm.sh/charts/bitnami/rabbitmq)
 
-##### Helm 2
-
-RabbitMQ Helm Chart version 7.0.0 or later
-
-```cli
-helm install --name rabbitmq --set auth.username=user --set auth.password=PASSWORD bitnami/rabbitmq --wait
-```
-
-**Notes:**
-
-* If running this demo on a computer with a ARM Processor, refer to the earlier note
-* If using KinD refer to the earlier note
-* For RabbitMQ Helm Chart version 6.x.x or earlier, refer to the earlier note
-
 #### Wait for RabbitMQ to Deploy
 
 ⚠️ Be sure to wait until the deployment has completed before continuing. ⚠️
@@ -71,6 +59,12 @@ kubectl get po
 
 NAME         READY   STATUS    RESTARTS   AGE
 rabbitmq-0   1/1     Running   0          3m3s
+```
+
+### access rabbitmq ui with `user:foobar`
+
+```cli
+k port-forward -n keda-poc svc/rabbitmq 15672:15672
 ```
 
 ### Deploying a RabbitMQ consumer

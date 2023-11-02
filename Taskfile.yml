@@ -1,0 +1,117 @@
+version: '3'
+vars:
+  CYAN: tput setaf 6
+  RED: tput setaf 1
+  YELLOW: tput setaf 3
+  GREEN: tput setaf 2
+  BLUE: tput setaf 1
+  PURPLE: tput setaf 5
+  BG_B: tput setab 0
+  BOLD: tput bold
+  RESET: tput sgr0
+  CLEAR: tput reset
+  INT_REGISTRY: registry.localhost:5002
+  PATH_ERROR: is not installed or correctly configured in PATH.
+  ENV: local
+  # GIT_COMMIT:
+  #   sh: git log -n 1 --format=%h
+
+dotenv: [ '.env' ]
+
+silent: true
+
+# includes: 
+#   prefix: ./path/to/file.yml
+
+tasks:
+  clear:
+    internal: true
+    cmds:
+      - sleep 0.1 && {{.CLEAR}}
+  highlight_bg:
+    internal: true
+    cmds:
+      - |
+        sleep 0.1 && \
+        {{.CYAN}} && \
+        {{.BOLD}} && \
+        {{.BG_B}}
+  highlight_normal:
+    internal: true
+    cmds:
+      - |
+        sleep 0.1 && \
+        {{.CYAN}} && \
+        {{.BOLD}}
+  reset:
+    internal: true
+    cmds:
+      - |
+        sleep 0.1 && \
+        {{.RESET}}
+
+  default:
+    cmds:
+      - task: clear
+      - task: launch_demo
+    # ignore_error: true
+
+  repos:
+    internal: true
+    desc: Adds and updates all the required Helm repositories locally.
+    preconditions:
+      - sh: "which helm"
+        msg: "helm {{.PATH_ERROR}}"
+    cmds:
+      - task: highlight_bg
+      - echo -e "This will add new repositories to your local Helm\n"
+      - task: reset
+      - helm repo add bitnami https://charts.bitnami.com/bitnami
+      - helm repo add kedacore https://kedacore.github.io/charts
+      - helm repo update &>/dev/null
+    ignore_error: true
+
+  launch_demo:
+    internal: true
+    desc: run-demo
+    cmds:
+      - task: deploy_rabbitmq
+      - task: deploy_keda
+      - task: deploy_demo_app
+
+  deploy_rabbitmq:
+    internal: true
+    desc: install rabbitmq
+    cmds:
+      - task: repos
+      - helm upgrade --install rabbitmq --set auth.username=user --set auth.password={{.RMQ_PASSWD}} bitnami/rabbitmq --wait --namespace {{.NAMEPSACE}} --create-namespace --debug
+  
+  deploy_keda:
+    internal: true
+    desc: install keda
+    cmds:
+      - task: repos
+      - helm upgrade --install keda kedacore/keda --namespace keda --create-namespace
+ 
+  deploy_demo_app:
+    internal: true
+    desc: install demo_app
+    cmds:
+      - kubectl apply -f ./deploy
+
+  cleanup:
+    desc: remove deplsoyment
+    cmds:
+      - helm ls | grep rabbitmq && helm uninstall rabbitmq --namespace {{.NAMEPSACE}}
+      - helm ls--namespace keda | grep keda &&  helm uninstall keda --namespace keda
+      - kubectl delete -f ./deploy
+    
+  rabbitmq_bridge:
+    interactive: true
+    cmds:
+      - kubectl port-forward --namespace {{.NAMEPSACE}} svc/rabbitmq 15672:15672
+      
+  poc_logs:
+    interactive: true
+    cmds:
+      - kubectl logs -n {{.NAMEPSACE}} -l job-name=rabbitmq-publish

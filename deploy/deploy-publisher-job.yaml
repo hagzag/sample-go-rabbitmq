@@ -12,8 +12,8 @@ spec:
           command:
             [
               "send",
-              "amqp://user:PASSWORD@rabbitmq.default.svc.cluster.local:5672",
-              "300",
+              "amqp://user:foobar@rabbitmq.keda-poc.svc.cluster.local:5672",
+              "3000",
             ]
       restartPolicy: Never
   backoffLimit: 4
